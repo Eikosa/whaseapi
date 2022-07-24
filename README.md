@@ -7,7 +7,7 @@ Can do:
 - ✔️ Find chats as saved contacts
 - ✔️ Send messages to numbers
 - ✔️ Get all participants of group
-- ✔️ Get unique id
+- ✔️ Get unique id of chat
 
 To do:
 - 📝 Handling messages
