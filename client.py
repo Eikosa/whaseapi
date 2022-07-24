@@ -40,7 +40,7 @@ class Client:
 
         if self.hidden:
             options.add_argument("--headless")
-            options.add_argument('--disable-gpu')
+            #options.add_argument('--disable-gpu')
             options.add_argument('--log-level=3')
 
             #loglamayı kapatır
@@ -86,11 +86,12 @@ class Client:
                 time.sleep(1)   
 
         self.wait_loading()
+        self.wait_el('[data-testid="chatlist-header"]')
     
     def get_conversation_header(self):
         # like number of person
         try:
-            return self.browser.find_element(By.CSS_SELECTOR, '[data-testid="conversation-info-header"]')
+            return self.wait_el('[data-testid="conversation-info-header"]')
         except:
             return False
 
@@ -99,8 +100,8 @@ class Client:
     
 
     def get_last_message(self):
-
-        return self.get_messages()[-1]
+        msgs = self.get_messages()
+        return msgs[-1]
     
     def get_chat_id(self, chat = None):
         """
@@ -109,11 +110,15 @@ class Client:
         if chat != None:
             self.get_chat(chat)
         i = self.get_last_message().find_element_by_xpath("..").get_attribute("data-id")
-        return i.split("@")[0].split("_")[1]
+        id = i.split("@")[0].split("_")[1]
+        if "-" in id:
+            # owner = id.split("-")[0] 
+            return id.split("-")[1]        
+        return id
 
 
     def get_messages(self):
-        return self.wait_el('[data-testid="msg-container"]')
+        return self.wait_els('[data-testid="msg-container"]')
     
     def get_message_status(self, msg):
         """
@@ -160,6 +165,16 @@ class Client:
                 return el
         return el
 
+    
+    def wait_els(self, selector, timeout=30):
+        for _ in range(round(timeout/.1)):
+            el = self.browser.find_elements(By.CSS_SELECTOR, selector)
+            if el == []:
+                time.sleep(.1)
+            else:
+                return el
+        return el
+
     def get_chat_search_results(self, text):
         search_input = self.wait_el('''[data-testid="chat-list-search"]''')
         search_input.clear()
@@ -175,15 +190,22 @@ class Client:
             except:
                 pass
             
-            try:
-                conclusion = self.browser.find_elements(By.CSS_SELECTOR, '''[data-testid="cell-frame-container"]''')
+            conclusion = self.browser.find_elements(By.CSS_SELECTOR, '''[data-testid="cell-frame-container"]''')
+            if conclusion != []:
                 break
-            except:
-                pass
                 
             time.sleep(.1)
         
-        search_input.send_keys(Keys.ESCAPE)
+        try:
+            search_input.send_keys(Keys.ESCAPE)
+        except:
+            pass
+        while 1:
+            try:
+                conclusion[0].text
+                break
+            except:
+                conclusion = self.get_chat_search_results(text)
         return conclusion
 
     def get_chat(self, text):
@@ -211,4 +233,58 @@ class Client:
         number = self.edit_chat_name(number)
         self.browser.get("https://web.whatsapp.com/send?phone={}".format(number))
         self.wait_loading()
+
+    def get_group_participants(self, group):
+        self.get_chat(group)
+        self.get_conversation_header().click()
+        self.wait_el('[data-icon="search"]').click()
+        popup = self.wait_el('[data-testid="popup-contents"]')
+        # document.querySelector('[data-testid="popup-contents"]').querySelectorAll('[data-testid="cell-frame-container"]')
+
+        while 1:
+            participants_count = self.browser.find_element(By.CSS_SELECTOR, '[data-testid="section-participants"]').text.split(" ")[0]
+            try:
+                participants_count = int(participants_count)
+                break
+            except:
+                time.sleep(.1)
+        participants = []
+        while 1:
+            participants_part = popup.find_elements(By.CSS_SELECTOR, '[data-testid="cell-frame-container"]')
+
+            done = True
+            for i in participants_part:
+                try:
+                    if i.text.endswith("..."):
+                        done = False
+                        time.sleep(1)
+                        break
+                    if "" == i.text:
+                        done = False
+                        time.sleep(1)
+                        break
+                except Exception as e:
+                    done = False
+                    break
+            if not done:
+                continue
+
+            for participant in participants_part:
+                if not participant.text in participants:
+                    participants.append(participant.text)
+            
+            if len(participants) != participants_count:
+                self.browser.execute_script('''document.querySelector('[data-testid="popup-contents"] > [class] > div[class]').scrollTop += 1000''')
+                continue
+
+            break
+
+        while 1:
+            try:
+                self.find_el('[data-testid="btn-closer-drawer"]').click()
+                break
+            except:
+                time.sleep(.1)
+        return participants
+
 
