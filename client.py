@@ -388,11 +388,14 @@ class Client:
         return True
     
     def send_image(self, chat, img_location):
-        self.get_chat(chat)
-        self.find_el('[data-testid="clip"]').click()
-        self.find_el('input[accept*=image]').send_keys(img_location)
-        self.find_el('[data-testid="send"]').click()
-        return True
+        try:    
+            self.get_chat(chat)
+            self.wait_el('[data-testid="clip"]').click()
+            self.wait_el('input[accept*=image]').send_keys(img_location)
+            self.wait_el('[data-icon="send"]').find_element_by_xpath("..").click()
+            return True
+        except Exception as e:
+            return False
     async def message_handler_async(self, group):
         while True:
             try:
