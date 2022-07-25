@@ -149,6 +149,10 @@ class Client:
             }
 
     def get_messages(self):
+        try:
+            self.find_el('[data-testid="down"]').click()
+        except:
+            pass
         return self.wait_els('[data-testid="msg-container"]')
     
     def get_message_status(self, msg):
@@ -171,6 +175,12 @@ class Client:
     def edit_chat_name(self, chat):
         return chat.replace("+", "").replace(" ", "")
 
+    def chat_type(self, chat):
+        if chat.find_elements(By.CSS_SELECTOR, '[data-testid="default-group"]') != []:
+            return "group"
+        if chat.find_elements(By.CSS_SELECTOR, '[data-testid="default-user"]') != []:
+            return "user"
+        
     def send_message(self, chat, text):
         if self.get_chat(chat) == False and self.edit_chat_name(self.get_conversation_header().text) != self.edit_chat_name(chat):
             self.go_chat_with_no(chat)
@@ -384,13 +394,15 @@ class Client:
 
     def archive_chat(self, chat):
         self.right_click(chat)
+        time.sleep(.5)
         self.find_el('[aria-label*="arşiv"]').click()
         return True
     
-    def send_image(self, chat, img_location):
-        try:    
-            self.get_chat(chat)
-            self.wait_el('[data-testid="clip"]').click()
+    def send_document(self, chat, img_location):
+        self.get_chat(chat)
+        time.sleep(2)
+        try:
+            self.browser.find_element(By.CSS_SELECTOR, '[data-testid="clip"]').click()
             self.wait_el('input[accept*=image]').send_keys(img_location)
             self.wait_el('[data-icon="send"]').find_element_by_xpath("..").click()
             return True
