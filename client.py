@@ -415,10 +415,33 @@ class Client:
 
                 if not_readed != []:
                     for i in not_readed:
-                        self.loop.create_task(group(i))
+                        class datas:
+                            def __init__(self, i):
+                                self.i = i
+                            def __repr__(self):
+                                return self.i
+                        
+                        datas = datas(i)
+                        datas.raw_text = i.text
+
+                        ayir = i.text.split("\n")
+                                            
+                        datas.sender = ayir[0]
+                        datas.msg_date = ayir[1]
+                        datas.msg_count = ayir[-1]
+                        if len(ayir) == 4:
+                            datas.last_msg = ayir[2]
+                        else:
+                            datas.sender = ayir[2]
+                            datas.group_name = ayir[0]
+                            datas.last_msg = ayir[-2]
+                        
+                        datas.type = self.chat_type(i)
+                        self.loop.create_task(group(datas))
                 
                 await asyncio.sleep(2)
-            except:
+            except Exception as e:
+                print(e)
                 await asyncio.sleep(1)
 
     def message_handler(self, func):
