@@ -121,6 +121,9 @@ class Client:
             return id.split("-")[1]        
         return id
 
+    def get_message_id(self, msg):
+        return self.get_last_message().find_element_by_xpath("..").get_attribute("data-id").split("_")[-2]
+
     def parse_message(self, message):
         ayir = message.text.split("\n")
         if len(ayir) == 4: #replied
