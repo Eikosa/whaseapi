@@ -13,9 +13,8 @@ Can do:
 - ✔️ Archive chats
 - ✔️ Handling messages
 - ✔️ Get message status
-- ✔️ Send images/documents
+- ✔️ Send images/documents/medias
 
 To do:
-- 📝 Send media
 - 📝 Search messages
 - 📝 Download medias
