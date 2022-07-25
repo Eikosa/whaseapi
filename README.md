@@ -8,9 +8,9 @@ Can do:
 - ✔️ Send messages to numbers
 - ✔️ Get all participants of group
 - ✔️ Get unique id of chat
+- ✔️ Handling messages
 
 To do:
-- 📝 Handling messages
 - 📝 Get unique id of message
 - 📝 Send media
 - 📝 Search messages
