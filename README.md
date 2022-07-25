@@ -13,6 +13,7 @@ Can do:
 - ✔️ Archive chats
 - ✔️ Handling messages
 - ✔️ Get message status
+- ✔️ Send images
 
 To do:
 - 📝 Send media
