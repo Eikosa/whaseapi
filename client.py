@@ -5,6 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver import ActionChains
 import time
 
 import os
@@ -173,12 +174,30 @@ class Client:
 
         text = str(text)
 
+        if text == "":
+            return True
+
+        JS_ADD_TEXT_TO_INPUT = """
+        var elm = arguments[0], txt = arguments[1];
+        elm.value += txt;
+        elm.dispatchEvent(new Event('change'));
+        """
+        time.sleep(2)
+        
+
         while 1:
             try:
-                self.browser.find_element(By.CSS_SELECTOR, '''[data-testid="conversation-compose-box-input"]''').send_keys(text + "\n")
+                el = self.browser.find_element(By.CSS_SELECTOR, '''[data-testid="conversation-compose-box-input"]''')
+
+                try:
+                    el.send_keys(text + "\n")
+                except Exception as e:
+                    if "only supports characters in the BMP" in str(e):
+                        self.browser.execute_script(JS_ADD_TEXT_TO_INPUT, el, text)
+
                 self.get_message_status(self.get_last_message())
                 break
-            except:
+            except Exception as e:
                 if self.browser.find_elements(By.CSS_SELECTOR, '[data-testid="block-message"]') != []:
                     return False
                 time.sleep(.1)
@@ -212,7 +231,10 @@ class Client:
     def get_chat_search_results(self, text):
         search_input = self.wait_el('''[data-testid="chat-list-search"]''')
         search_input.clear()
+        search_input.click()
+        time.sleep(.2)
         search_input.send_keys(text)
+        time.sleep(1)
         
         conclusion = []
         while 1: #timeout
@@ -230,17 +252,15 @@ class Client:
                 
             time.sleep(.1)
         
+        
+        return conclusion
+
+    def close_search(self):
         try:
-            search_input.send_keys(Keys.ESCAPE)
+            #search_input.send_keys(Keys.ESCAPE)
+            self.browser.find_element(By.CSS_SELECTOR, '[data-testid="x-alt"]').click()
         except:
             pass
-        while 1:
-            try:
-                conclusion[0].text
-                break
-            except:
-                conclusion = self.get_chat_search_results(text)
-        return conclusion
 
     def get_chat(self, text):
         count = []
@@ -265,6 +285,7 @@ class Client:
                     
                     if self.edit_chat_name(chat_name.lower()) == self.edit_chat_name(text.lower()):
                         chat.click()
+                        self.close_search()
                         return True
                     
                     if self.edit_chat_name(text.lower()) in self.edit_chat_name(chat_name.lower()):
@@ -275,6 +296,7 @@ class Client:
         
         if len(count) == 1:
             count[0].click()
+            self.close_search()
             return True
         return False
 
@@ -288,11 +310,16 @@ class Client:
     def get_group_participant_count(self, group):
         self.get_chat(group)
         self.get_conversation_header().click()
-        self.wait_el('[data-icon="search"]').click()
-        popup = self.wait_el('[data-testid="popup-contents"]')
         # document.querySelector('[data-testid="popup-contents"]').querySelectorAll('[data-testid="cell-frame-container"]')
-
-        participants_count = self.browser.find_element(By.CSS_SELECTOR, '[data-testid="section-participants"]').text.split(" ")[0]
+        #time.sleep(2)
+        while 1:
+            try:
+                katilimci = self.browser.find_element(By.CSS_SELECTOR, '[data-testid="section-participants"]').text.split(" ")[0]
+            except:
+                return 0
+            if katilimci != "":
+                return katilimci
+            time.sleep(.1)
 
     def get_group_participants(self, group):
         self.get_chat(group)
@@ -332,9 +359,9 @@ class Client:
             for participant in participants_part:
                 if not participant.text in participants:
                     participants.append(participant.text)
-            
+
             if len(participants) != participants_count:
-                self.browser.execute_script('''document.querySelector('[data-testid="popup-contents"] > [class] > div[class]').scrollTop += 1000''')
+                self.browser.execute_script('''document.querySelector('[data-testid="popup-contents"] > [class] > div[class]').scrollTop += 500''')
                 continue
 
             break
@@ -346,11 +373,21 @@ class Client:
             except:
                 time.sleep(.1)
         return participants
+    def right_click(self, el):
+        ActionChains(self.browser).context_click(el).perform()
 
+    def right_click_css(self, selector):
+        ActionChains(self.browser).context_click(self.browser.execute_script(f'return document.querySelector("{selector}")')).perform()
+
+    def archive_chat(self, chat):
+        self.right_click(chat)
+        self.find_el('[aria-label*="arşiv"]').click()
+        return True
+    
     async def message_handler_async(self, group):
         while True:
             try:
-                not_readed = [i.find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..") for i in self.browser.find_elements(By.CSS_SELECTOR, '[aria-label*="okunmamış mesaj"]')]
+                not_readed = [i.find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..") for i in self.browser.find_elements(By.CSS_SELECTOR, '[aria-label*="okunmamış mesaj"]')]
 
                 if not_readed != []:
                     for i in not_readed:
