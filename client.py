@@ -1,4 +1,5 @@
 
+import asyncio
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -13,12 +14,13 @@ import os
 from webdriver_manager.chrome import ChromeDriverManager
 
 class Client:
-    def __init__(self, hidden=True, proxy = None) -> None:
+    def __init__(self, me, hidden=True, proxy = None) -> None:
         super().__init__()
         
+        self.me = me
         self.hidden = hidden
         self.proxy = proxy
-    
+        self.loop = asyncio.get_event_loop()
     
     def __enter__(self):
         return self.start()
@@ -30,7 +32,7 @@ class Client:
         self.browser.quit()
         return True
 
-    def start(self):
+    def start(self, function = None):
         options = Options()
 
         options.add_argument("--user-data-dir={}/selenium".format(os.getcwd()))
@@ -54,6 +56,12 @@ class Client:
 
         self.auth()
     
+    def run(self,function):        
+        if function != None:                
+            loop = asyncio.get_event_loop()
+            run = loop.run_until_complete
+            run(function())
+
     def wait_loading(self):
         while self.is_loading():
             time.sleep(1)
@@ -90,15 +98,11 @@ class Client:
     
     def get_conversation_header(self):
         # like number of person
-        try:
-            return self.wait_el('[data-testid="conversation-info-header"]')
-        except:
-            return False
+        return self.find_el('[data-testid="conversation-info-header"]')
 
     def get_dialogs(self):
         return self.browser.execute_script('''return document.querySelectorAll('[data-testid="chat-list"] > div > div')''')
     
-
     def get_last_message(self):
         msgs = self.get_messages()
         return msgs[-1]
@@ -116,6 +120,29 @@ class Client:
             return id.split("-")[1]        
         return id
 
+    def parse_message(self, message):
+        ayir = message.text.split("\n")
+        if len(ayir) == 4: #replied
+            replied_owner = ayir[0]
+            replied_msg = ayir[1]
+            msg = ayir[2]
+            hour = ayir[3]
+            return {
+                
+                "reply_to_message": {
+                    "replied_owner": replied_owner,
+                    "replied_msg": replied_msg
+                },
+                "msg": msg,
+                "hour": hour
+            }
+        if len(ayir) == 2:
+            msg = ayir[0]
+            hour = ayir[1]
+            return {
+                "msg": msg,
+                "hour": hour
+            }
 
     def get_messages(self):
         return self.wait_els('[data-testid="msg-container"]')
@@ -128,7 +155,12 @@ class Client:
         # [...document.querySelectorAll('[data-testid="msg-container"]')].slice(-1)[0].querySelector('[data-testid="msg-dblcheck"]').ariaLabel
         while 1:
             try:
-                return self.get_messages()[-1].find_element(By.CSS_SELECTOR, '[data-testid*="check"]').accessible_name
+                son_msg = self.get_messages()[-1]
+
+                try:
+                    return son_msg.find_element(By.CSS_SELECTOR, '[data-testid*="check"]').accessible_name
+                except:
+                    return False
             except:
                 time.sleep(.1)
     
@@ -136,7 +168,7 @@ class Client:
         return chat.replace("+", "").replace(" ", "")
 
     def send_message(self, chat, text):
-        if self.get_chat(chat) == False and self.edit_chat_name(self.get_conversation_header()) != self.edit_chat_name(chat):
+        if self.get_chat(chat) == False and self.edit_chat_name(self.get_conversation_header().text) != self.edit_chat_name(chat):
             self.go_chat_with_no(chat)
 
         text = str(text)
@@ -147,6 +179,8 @@ class Client:
                 self.get_message_status(self.get_last_message())
                 break
             except:
+                if self.browser.find_elements(By.CSS_SELECTOR, '[data-testid="block-message"]') != []:
+                    return False
                 time.sleep(.1)
     
     def find_el(self, selector):
@@ -211,18 +245,33 @@ class Client:
     def get_chat(self, text):
         count = []
 
-        results = self.get_chat_search_results(text)
-        for chat in results:
-            split = chat.text.split("\n")
-            chat_name = split[0]
-            #chat_date = split[1]
-            
-            if chat_name.lower() == text.lower():
-                chat.click()
+        if text == "me":
+            text = self.me
+        
+        conv_hd = self.get_conversation_header()
+        if conv_hd != False:
+            if self.edit_chat_name(conv_hd.text) == text:
                 return True
-            
-            if text.lower() in chat_name.lower():
-                count.append(chat)
+
+        while 1:
+            try:
+                results = self.get_chat_search_results(text)
+                for chat in results:
+                    split = chat.text.split("\n")
+                    chat_name = split[0]
+                    #chat_date = split[1]
+
+                    
+                    
+                    if self.edit_chat_name(chat_name.lower()) == self.edit_chat_name(text.lower()):
+                        chat.click()
+                        return True
+                    
+                    if self.edit_chat_name(text.lower()) in self.edit_chat_name(chat_name.lower()):
+                        count.append(chat)
+                break
+            except:
+                time.sleep(.1)
         
         if len(count) == 1:
             count[0].click()
@@ -231,8 +280,19 @@ class Client:
 
     def go_chat_with_no(self, number):
         number = self.edit_chat_name(number)
+        if number.isdigit() == False:
+            return False
         self.browser.get("https://web.whatsapp.com/send?phone={}".format(number))
         self.wait_loading()
+    
+    def get_group_participant_count(self, group):
+        self.get_chat(group)
+        self.get_conversation_header().click()
+        self.wait_el('[data-icon="search"]').click()
+        popup = self.wait_el('[data-testid="popup-contents"]')
+        # document.querySelector('[data-testid="popup-contents"]').querySelectorAll('[data-testid="cell-frame-container"]')
+
+        participants_count = self.browser.find_element(By.CSS_SELECTOR, '[data-testid="section-participants"]').text.split(" ")[0]
 
     def get_group_participants(self, group):
         self.get_chat(group)
@@ -287,4 +347,21 @@ class Client:
                 time.sleep(.1)
         return participants
 
+    async def message_handler_async(self, group):
+        while True:
+            try:
+                not_readed = [i.find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..").find_element_by_xpath("..") for i in self.browser.find_elements(By.CSS_SELECTOR, '[aria-label*="okunmamış mesaj"]')]
 
+                if not_readed != []:
+                    for i in not_readed:
+                        self.loop.create_task(group(i))
+                
+                await asyncio.sleep(2)
+            except:
+                await asyncio.sleep(1)
+
+    def message_handler(self, func):
+       asyncio.create_task(self.message_handler_async(func))
+
+
+# '[aria-label*="okunmamış mesaj"]'
