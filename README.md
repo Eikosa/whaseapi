@@ -8,13 +8,13 @@ Can do:
 - ✔️ Send messages to numbers
 - ✔️ Get all participants of group
 - ✔️ Get unique id of chat
+- ✔️ Get unique id of message
 - ✔️ Handling messages
 - ✔️ Archive chats
 - ✔️ Handling messages
 - ✔️ Get message status
 
 To do:
-- 📝 Get unique id of message
 - 📝 Send media
 - 📝 Search messages
 - 📝 Download medias
