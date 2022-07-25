@@ -387,6 +387,12 @@ class Client:
         self.find_el('[aria-label*="arşiv"]').click()
         return True
     
+    def send_image(self, chat, img_location):
+        self.get_chat(chat)
+        self.find_el('[data-testid="clip"]').click()
+        self.find_el('input[accept*=image]').send_keys(img_location)
+        self.find_el('[data-testid="send"]').click()
+        return True
     async def message_handler_async(self, group):
         while True:
             try:
