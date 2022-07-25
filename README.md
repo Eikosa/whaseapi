@@ -14,6 +14,7 @@ Can do:
 - ✔️ Handling messages
 - ✔️ Get message status
 - ✔️ Send images/documents/medias
+- ✔️ Identify chat types (user, group)
 
 To do:
 - 📝 Search messages
