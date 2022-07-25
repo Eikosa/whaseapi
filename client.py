@@ -417,9 +417,11 @@ class Client:
                     for i in not_readed:
                         class datas:
                             def __init__(self, i):
-                                self.i = i
+                                self.el = i
                             def __repr__(self):
-                                return self.i
+                                return self.el
+                            def __call__(self):
+                                return self.el
                         
                         datas = datas(i)
                         datas.raw_text = i.text
